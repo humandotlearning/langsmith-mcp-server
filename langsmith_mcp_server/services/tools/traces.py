@@ -1,9 +1,18 @@
 """Tools for interacting with LangSmith traces and conversations."""
 
 from typing import Any, Dict
+from langsmith import Client
+from typing import List, Optional, Iterable, Union, Any
+from langsmith.schemas import Run
+from langsmith_mcp_server.common.helpers import (
+    convert_uuids_to_strings,
+    filter_fields,
+    build_trace_tree,
+    find_in_dict,
+)
 
 
-def fetch_trace_tool(client, project_name: str = None, trace_id: str = None) -> Dict[str, Any]:
+def fetch_trace_tool(client: Client, project_name: str = None, trace_id: str = None) -> Dict[str, Any]:
     """
     Fetch the trace content for a specific project or specify a trace ID.
 
@@ -73,7 +82,7 @@ def fetch_trace_tool(client, project_name: str = None, trace_id: str = None) -> 
         return {"error": f"Error fetching last trace: {str(e)}"}
 
 
-def get_thread_history_tool(client, thread_id: str, project_name: str) -> Dict[str, Any]:
+def get_thread_history_tool(client: Client, thread_id: str, project_name: str) -> Dict[str, Any]:
     """
     Get the history for a specific thread.
 
@@ -138,7 +147,7 @@ def get_thread_history_tool(client, thread_id: str, project_name: str) -> Dict[s
 
 
 def get_project_runs_stats_tool(
-    client,
+    client: Client,
     project_name: str = None,
     trace_id: str = None,
 ) -> Dict[str, Any]:
@@ -183,3 +192,121 @@ def get_project_runs_stats_tool(
         return project_runs_stats
     except Exception as e:
         return {"error": f"Error getting project runs stats: {str(e)}"}
+
+
+def list_projects_tool(client: Client, limit: int = 5, project_name: str = None, more_info: bool = False) -> Dict[str, Any]:
+    """
+    List projects from LangSmith.
+
+    Args:
+        client: LangSmith client instance
+        limit: Maximum number of projects to return (default: 5)
+        project_name: Filter projects by name
+        more_info: Return more detailed project information (default: False)
+    
+    Returns:
+        Dictionary containing a "projects" key with a list of project dictionaries
+    """
+    projects = []
+    for project in client.list_projects(
+        reference_free=True,
+        name_contains=project_name,
+        limit=limit,  # this can be set by the agent
+    ):
+        projects.append(project.dict())
+
+    if more_info:
+        return {"projects": projects}
+    else:
+        simple_projects = []
+        for project in projects:
+            deployment_id = find_in_dict(project, "deployment_id")
+            project_id = project.get("id", None)
+            project_dict = {
+                "name": project.get("name", None),
+                "project_id": str(project_id) if project_id is not None else None,
+            }
+            if deployment_id:
+                project_dict["agent_deployment_id"] = deployment_id
+            simple_projects.append(project_dict)
+        return {"projects": simple_projects}
+
+
+def fetch_runs_tool(
+    client: Client,
+    project_name: Union[str, List[str]],
+    trace_id: Optional[str] = None,
+    run_type: Optional[str] = None,
+    dataset_name: Optional[str] = None,
+    reference_example_id: Optional[str] = None,
+    parent_run_id: Optional[str] = None,
+    error: Optional[bool] = None,
+    run_ids: Optional[List[str]] = None,
+    is_root: Optional[bool] = None,
+    filter: Optional[str] = None,
+    trace_filter: Optional[str] = None,
+    tree_filter: Optional[str] = None,
+    order_by: str = "-start_time",
+    limit: int = 50,
+    select: Optional[List[str]] = None,
+    show_trace_tree: bool = True,
+    trace_tree_depth: int = 0,
+) -> Dict[str, Any]:
+    """
+    Fetch LangSmith runs (traces, tools, chains, etc.) from one or more projects
+    using flexible filters, query language expressions, and trace-level constraints.
+
+    Args:
+        client: LangSmith client instance
+        project_name: The name of the project to fetch the runs from
+        trace_id: The ID of the trace to fetch the runs from
+        run_type: The type of the run to fetch
+        dataset_name: The name of the dataset to fetch the runs from
+        reference_example_id: The ID of the reference example to fetch the runs from
+        parent_run_id: The ID of the parent run to fetch the runs from
+        error: Whether to fetch errored runs
+        run_ids: The IDs of the runs to fetch
+        is_root: Whether to fetch root runs
+        filter: The filter to apply to the runs
+        trace_filter: The filter to apply to the trace
+        tree_filter: The filter to apply to the tree
+        order_by: The order by to apply to the runs
+        limit: The limit to apply to the runs
+        select: The select to apply to the runs
+        show_trace_tree: Whether to show the trace tree
+        trace_tree_depth: The depth of the trace tree
+    Returns:
+        Dictionary containing a "runs" key with a list of run dictionaries
+    """
+    runs_iter: Iterable[Run] = client.list_runs(
+        project_name=project_name,
+        trace_id=trace_id,
+        run_type=run_type,
+        dataset_name=dataset_name,
+        reference_example_id=reference_example_id,
+        parent_run_id=parent_run_id,
+        error=error,
+        id=run_ids,
+        is_root=is_root,
+        filter=filter,
+        trace_filter=trace_filter,
+        tree_filter=tree_filter,
+        order_by=order_by,
+        limit=limit,
+    )
+    runs_dict = []
+    for run in runs_iter:
+        run_dict = run.dict()
+        # Convert UUID objects to strings for JSON serialization
+        run_dict = convert_uuids_to_strings(run_dict)
+        
+        # Filter fields if select is specified
+        if select:
+            run_dict = filter_fields(run_dict, select)
+        
+        if show_trace_tree:
+            # Build simplified trace tree structure with metrics
+            run_dict = build_trace_tree(run_dict, depth=trace_tree_depth)
+        
+        runs_dict.append(run_dict)
+    return {"runs": runs_dict}
