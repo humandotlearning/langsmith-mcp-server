@@ -24,9 +24,9 @@ mcp = FastMCP("LangSmith API MCP Server")
 
 # Register all tools with the server using simplified registration modules
 # Note: Tools will use API key from request.state.api_key (set by middleware)
-register_tools(mcp, None)  # Pass None since we'll use request-based client
-register_prompts(mcp, None)
-register_resources(mcp, None)
+register_tools(mcp)
+register_prompts(mcp)
+register_resources(mcp)
 
 @mcp.custom_route("/health", methods=["GET"])
 async def health_check(request: Request) -> PlainTextResponse:

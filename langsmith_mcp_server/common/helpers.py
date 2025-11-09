@@ -3,7 +3,9 @@
 import os
 import re
 from datetime import datetime
-from typing import Optional, Union
+from typing import Any, Optional, Union, List
+from uuid import UUID
+from decimal import Decimal
 
 from fastmcp.server import Context
 from langsmith import Client
@@ -134,3 +136,191 @@ def _parse_as_of_parameter(as_of: str) -> Union[datetime, str]:
     except (ValueError, AttributeError):
         # If parsing fails, assume it's a version tag and return as string
         return as_of
+
+def find_in_dict(data, key):
+    """
+    Recursively search for a key in a nested dictionary or list.
+    
+    This helper function traverses nested data structures to find a specific key,
+    searching through dictionaries and lists at any depth level.
+    
+    ---
+    ⚙️ PARAMETERS
+    -------------
+    data : dict | list | Any
+        The data structure to search in. Can be a dictionary, list, or any nested
+        combination of these types.
+    
+    key : str
+        The key to search for in the data structure.
+    
+    ---
+    📤 RETURNS
+    ----------
+    Any | None
+        The value associated with the key if found, otherwise None.
+        Returns the first occurrence found during depth-first traversal.
+    
+    ---
+    🧪 EXAMPLES
+    ------------
+    ```python
+    data = {
+        "a": 1,
+        "b": {
+            "c": {"deployment_id": "123-456"}
+        }
+    }
+    result = find_in_dict(data, "deployment_id")  # Returns "123-456"
+    ```
+    """
+    if isinstance(data, dict):
+        if key in data:
+            return data[key]
+        for value in data.values():
+            result = find_in_dict(value, key)
+            if result is not None:
+                return result
+    elif isinstance(data, list):
+        for item in data:
+            result = find_in_dict(item, key)
+            if result is not None:
+                return result
+    return None
+
+def convert_uuids_to_strings(obj: Any) -> Any:
+    """
+    Recursively convert UUID, datetime, and Decimal objects to strings in dictionaries, lists, and other structures.
+    """
+    if isinstance(obj, UUID):
+        return str(obj)
+    elif isinstance(obj, datetime):
+        return obj.isoformat()
+    elif isinstance(obj, Decimal):
+        return str(obj)
+    elif isinstance(obj, dict):
+        return {key: convert_uuids_to_strings(value) for key, value in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_uuids_to_strings(item) for item in obj]
+    elif isinstance(obj, tuple):
+        return tuple(convert_uuids_to_strings(item) for item in obj)
+    else:
+        return obj
+
+def count_characters(obj: Any) -> int:
+    """
+    Recursively count the total number of characters in a data structure.
+    """
+    if isinstance(obj, str):
+        return len(obj)
+    elif isinstance(obj, dict):
+        return sum(count_characters(value) for value in obj.values())
+    elif isinstance(obj, (list, tuple)):
+        return sum(count_characters(item) for item in obj)
+    else:
+        # For other types, convert to string and count
+        return len(str(obj))
+
+def count_fields(obj: Any) -> int:
+    """
+    Recursively count the total number of fields/keys in a data structure.
+    """
+    if isinstance(obj, dict):
+        return len(obj) + sum(count_fields(value) for value in obj.values())
+    elif isinstance(obj, (list, tuple)):
+        return sum(count_fields(item) for item in obj)
+    else:
+        return 0
+
+def filter_fields(run_dict: dict, select: Optional[List[str]]) -> dict:
+    """
+    Filter a run dictionary to only include selected fields.
+    If select is None or empty, returns the full dictionary.
+    """
+    if not select:
+        return run_dict
+    
+    filtered = {}
+    for field in select:
+        if field in run_dict:
+            filtered[field] = run_dict[field]
+    return filtered
+
+def build_trace_tree(run_dict: dict, depth: int = 0) -> dict:
+    """
+    Build a simplified trace tree structure showing top-level fields with metrics for nested content.
+    
+    Args:
+        run_dict: The dictionary to build a tree from
+        depth: How many levels deep to show actual content before summarizing.
+               0 = summarize all nested structures (default)
+               1 = show one level deep, then summarize
+               2 = show two levels deep, then summarize
+               etc.
+    """
+    tree = {}
+    for key, value in run_dict.items():
+        if isinstance(value, dict):
+            if len(value) == 0:
+                # Empty dictionary - just return empty dict
+                tree[key] = {}
+            elif depth > 0:
+                # Show one level of content, then summarize deeper
+                tree[key] = build_trace_tree(value, depth - 1)
+            else:
+                # For dictionaries, show metrics
+                field_count = count_fields(value)
+                if field_count == 0:
+                    # Empty dictionary - just return empty dict
+                    tree[key] = {}
+                else:
+                    tree[key] = {
+                        "_type": "dict",
+                        "_field_count": field_count,
+                        "_character_count": count_characters(value),
+                        "_keys": list(value.keys())[:10]  # Show first 10 keys as preview
+                    }
+        elif isinstance(value, list):
+            # For lists, show metrics
+            if len(value) == 0:
+                tree[key] = []
+            elif depth > 0:
+                # Show one level of content
+                processed_items = []
+                for item in value:
+                    if isinstance(item, (dict, list)):
+                        # Recursively process nested structures
+                        if isinstance(item, dict):
+                            processed_items.append(build_trace_tree(item, depth - 1))
+                        else:  # list
+                            processed_items.append([build_trace_tree(subitem, depth - 1) if isinstance(subitem, dict)
+                                                   else subitem for subitem in item])
+                    else:
+                        processed_items.append(item)
+                tree[key] = processed_items
+            else:
+                # For lists, show metrics and a small preview
+                preview = []
+                for item in value[:2]:  # Take first 2 items
+                    if isinstance(item, dict):
+                        # For dict items, show just keys
+                        preview.append({"_type": "dict", "_keys": list(item.keys())[:5]})
+                    elif isinstance(item, list):
+                        # For list items, show length
+                        preview.append({"_type": "list", "_length": len(item)})
+                    else:
+                        # For primitive items, show the value (but limit length)
+                        str_val = str(item)
+                        preview.append(str_val[:100] if len(str_val) > 100 else str_val)
+                
+                tree[key] = {
+                    "_type": "list",
+                    "_length": len(value),
+                    "_field_count": count_fields(value),
+                    "_character_count": count_characters(value),
+                    "_preview": preview
+                }
+        else:
+            # For primitive values, show directly
+            tree[key] = value
+    return tree
