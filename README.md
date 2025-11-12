@@ -15,6 +15,53 @@ A production-ready [Model Context Protocol](https://modelcontextprotocol.io/intr
 
 The LangSmith MCP Server bridges the gap between language models and the LangSmith platform, enabling advanced capabilities for conversation tracking, prompt management, and analytics integration.
 
+## 🚀 Example Use Cases
+
+The server enables powerful capabilities including:
+
+- 💬 **Conversation History**: "Fetch the history of my conversation with the AI assistant from thread 'thread-123' in project 'my-chatbot'"
+- 📚 **Prompt Management**: "Get all public prompts in my workspace"
+- 🔍 **Smart Search**: "Find private prompts containing the word 'joke'"
+- 📝 **Template Access**: "Pull the template for the 'legal-case-summarizer' prompt"
+- 🔧 **Configuration**: "Get the system message from a specific prompt template"
+
+## 🛠️ Available Tools
+
+The LangSmith MCP Server provides the following tools for integration with LangSmith:
+
+### 📚 Prompt Management
+
+| Tool Name | Description |
+|-----------|-------------|
+| `list_prompts` | Fetch prompts from LangSmith with optional filtering. Filter by visibility (public/private) and limit results. |
+| `get_prompt_by_name` | Get a specific prompt by its exact name, returning the prompt details and template. |
+| `push_prompt` | Documentation tool for understanding how to create and push prompts to LangSmith (documentation-only). |
+
+### 🔍 Traces & Runs
+
+| Tool Name | Description |
+|-----------|-------------|
+| `fetch_runs` | Fetch LangSmith runs (traces, tools, chains, etc.) from one or more projects using flexible filters, query language expressions, and trace-level constraints. |
+| `list_projects` | List LangSmith projects with optional filtering and detail level control. Can return simplified or full project information. |
+| `list_experiments` | List LangSmith experiment projects (reference projects) with mandatory dataset filtering. Returns experiment information with key metrics (latency, cost, feedback stats). |
+
+### 📊 Datasets & Examples
+
+| Tool Name | Description |
+|-----------|-------------|
+| `list_datasets` | Fetch LangSmith datasets with filtering options by ID, type, name, or metadata. |
+| `list_examples` | Fetch examples from a LangSmith dataset with advanced filtering options. |
+| `read_dataset` | Read a specific dataset from LangSmith using dataset ID or name. |
+| `read_example` | Read a specific example from LangSmith using the example ID and optional version information. |
+| `create_dataset` | Documentation tool for understanding how to create datasets in LangSmith (documentation-only). |
+| `update_examples` | Documentation tool for understanding how to update dataset examples in LangSmith (documentation-only). |
+
+### 🧪 Experiments & Evaluations
+
+| Tool Name | Description |
+|-----------|-------------|
+| `run_experiment` | Documentation tool for understanding how to run experiments and evaluations in LangSmith (documentation-only). |
+
 ## 🛠️ Installation Options
 
 ### 📝 General Prerequisites
@@ -256,32 +303,6 @@ If you want to develop or contribute to the LangSmith MCP Server, follow these s
    make lint
    make format
    ```
-
-## 🚀 Example Use Cases
-
-The server enables powerful capabilities including:
-
-- 💬 **Conversation History**: "Fetch the history of my conversation with the AI assistant from thread 'thread-123' in project 'my-chatbot'"
-- 📚 **Prompt Management**: "Get all public prompts in my workspace"
-- 🔍 **Smart Search**: "Find private prompts containing the word 'joke'"
-- 📝 **Template Access**: "Pull the template for the 'legal-case-summarizer' prompt"
-- 🔧 **Configuration**: "Get the system message from a specific prompt template"
-
-## 🛠️ Available Tools
-
-The LangSmith MCP Server provides the following tools for integration with LangSmith:
-
-| Tool Name | Description |
-|-----------|-------------|
-| `list_prompts` | Fetch prompts from LangSmith with optional filtering. Filter by visibility (public/private) and limit results. |
-| `get_prompt_by_name` | Get a specific prompt by its exact name, returning the prompt details and template. |
-| `get_thread_history` | Retrieve the message history for a specific conversation thread, returning messages in chronological order. |
-| `get_project_runs_stats` | Get statistics about runs in a LangSmith project, either for the last run or overall project stats. |
-| `fetch_trace` | Fetch trace content for debugging and analyzing LangSmith runs using project name or trace ID. |
-| `list_datasets` | Fetch LangSmith datasets with filtering options by ID, type, name, or metadata. |
-| `list_examples` | Fetch examples from a LangSmith dataset with advanced filtering options. |
-| `read_dataset` | Read a specific dataset from LangSmith using dataset ID or name. |
-| `read_example` | Read a specific example from LangSmith using the example ID and optional version information. |
 
 ## 📄 License
 
