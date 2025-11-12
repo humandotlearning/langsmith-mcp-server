@@ -63,7 +63,6 @@ async def test_langsmith_mcp_server():
     
     print("🚀 Connecting to LangSmith MCP Server...")
     print(f"   URL: {mcp_url}")
-    print(f"   API Key: {api_key[:10]}...")
     print()
     
     # First, check if server is running
