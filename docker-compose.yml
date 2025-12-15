@@ -1,0 +1,24 @@
+services:
+  langsmith_mcp:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      LANGSMITH_ENDPOINT: ${LANGSMITH_ENDPOINT}
+      LANGSMITH_PROJECT: ${LANGSMITH_PROJECT}
+      # only include this if the server actually reads it from env:
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
+
+  mcp_proxy:
+    image: nginx:alpine
+    ports:
+      - "8001:80"
+    environment:
+      LANGSMITH_ENDPOINT: ${LANGSMITH_ENDPOINT}
+      LANGSMITH_PROJECT: ${LANGSMITH_PROJECT}
+      # only include this if the server actually reads it from env:
+      LANGSMITH_API_KEY: ${LANGSMITH_API_KEY}
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates:ro
+    depends_on:
+      - langsmith_mcp

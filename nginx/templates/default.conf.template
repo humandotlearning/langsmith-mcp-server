@@ -1,0 +1,27 @@
+server {
+    listen 80;
+
+    # Health check / debug
+    location = / {
+        return 200 "LangSmith MCP proxy is running\n";
+        add_header Content-Type text/plain;
+    }
+
+    # Main MCP endpoint
+    location /mcp {
+        proxy_pass http://langsmith_mcp:8000/mcp;
+
+        # Inject LangSmith API key for auth
+        proxy_set_header LANGSMITH-API-KEY "${LANGSMITH_API_KEY}";
+
+        # Optional: forward some useful headers
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+
+        # Important for streaming / SSE
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_read_timeout 3600s;
+    }
+}
