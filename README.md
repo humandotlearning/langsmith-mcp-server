@@ -268,6 +268,38 @@ curl http://localhost:8000/health
 
 This endpoint does not require authentication and returns `"LangSmith MCP server is running"` when the server is healthy.
 
+
+## 🐙 Docker Compose Deployment (Recommended)
+
+For a more robust setup, you can use Docker Compose which comes pre-configured with an Nginx proxy.
+
+1. **Build and Run:**
+   ```bash
+   docker-compose up --build
+   ```
+
+2. **Accessing the Server:**
+   The server will be available at `http://localhost:8001/mcp`.
+
+## 🌐 Public Access with ngrok
+
+To expose your local LangSmith MCP server to the internet (e.g., for use with cloud-hosted MCP clients), you can use [ngrok](https://ngrok.com/).
+
+1. **Start the server** (using Docker Compose as above).
+
+2. **Start ngrok:**
+   Run the following command in a new terminal:
+   ```bash
+   ngrok http 8001
+   ```
+   This exposes the Nginx proxy port (8001).
+
+3. **Configure your MCP Client:**
+   Use the HTTPS URL provided by ngrok (e.g., `https://<your-id>.ngrok-free.app/mcp`) as the server URL in your client configuration.
+   
+   **Headers:**
+   You will likely need to provide the `LANGSMITH-API-KEY` header as described in the Docker Deployment section.
+
 ## 🧪 Development and Contributing 🤝
 
 If you want to develop or contribute to the LangSmith MCP Server, follow these steps:
